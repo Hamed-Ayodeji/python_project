@@ -1,69 +1,64 @@
 import json
 
-# Functions for the to-do-list-manager
 
-## Function to read JSON file
 def load_tasks():
-    """This function reads and loads JSON file and handles FileNotFoundError and json.JSONDecodeError,
-    by creating a new empty to_do_list list as template in the JSON file"""
+    """Read and load JSON file, return empty template if file doesn't exist or is invalid."""
     try:
         with open("to_do_list.json", "r") as f:
             return json.load(f)
     except (FileNotFoundError, json.JSONDecodeError):
         return {"to_do_list": []}
 
-## Function to save JSON file
+
 def save_tasks(data):
-    """This function saves content into the JSON file"""
+    """Save tasks to JSON file."""
     with open("to_do_list.json", "w") as f:
         json.dump(data, f, indent=4)
 
-## Function to add task
-def add_task():
-    """Adds a task to the to_do_list list"""
-    # Prompts user for input, converts input to lower case and removes leading and trailing spaces
-    task_name = input("Enter a name for the task: \n").lower().strip()
 
-    # Checks if task_name input field is empty
+def is_duplicate_name(data, name, exclude_task=None):
+    """Check if task name exists, optionally excluding a specific task."""
+    return any(task["name"] == name for task in data["to_do_list"] if task != exclude_task)
+
+
+def add_task():
+    """Add a task to the to-do list."""
+    task_name = input("Enter a name for the task: ").lower().strip()
     if not task_name:
         print("Task name cannot be empty.")
         return
 
     data = load_tasks()
-    # Checks if task_name already exists
-    if any(task["name"] == task_name for task in data["to_do_list"]):
+    if is_duplicate_name(data, task_name):
         print("Task name already exists.")
         return
 
-    task_to_add = input("Enter a task: \n")
+    task_to_add = input("Enter a task description: ").strip()
+    if not task_to_add:
+        print("Task description cannot be empty.")
+        return
 
-    # Use the variable to build dictionary
     add_dict = {
-            "name": task_name,
-            "task": task_to_add,
-            "status": "in_progress"
+        "name": task_name,
+        "task": task_to_add,
+        "status": "in_progress"
     }
-
     data["to_do_list"].append(add_dict)
     save_tasks(data)
-    print(f"the task called {task_name} has been successfully added.")
+    print(f"The task '{task_name}' has been successfully added.")
 
-## Function to view tasks
+
 def view_task():
     """View all tasks or a specific task by name."""
-
-    # Checks if there are no task in the to-do-list manager
     data = load_tasks()
     if not data["to_do_list"]:
         print("No tasks to view.")
         return
 
-    input_task_name = input("Enter the name for the specific task you want to view, or enter 'all' to view all tasks: \n").lower().strip()
-    # To view all the tasks
+    input_task_name = input("Enter task name or 'all' to view all tasks: ").lower().strip()
     if input_task_name == "all":
         print(json.dumps(data, indent=4))
     else:
-        # To view specific task
         found = False
         for task in data["to_do_list"]:
             if task["name"] == input_task_name:
@@ -73,7 +68,7 @@ def view_task():
         if not found:
             print("Task not found.")
 
-## Function to update a task
+
 def update_task():
     """Update a task's name, description, or status."""
     data = load_tasks()
@@ -85,26 +80,29 @@ def update_task():
     for task in data["to_do_list"]:
         if task["name"] == task_to_update:
             new_name = input("Enter new task name (press Enter to keep current): ").lower().strip()
-            # Checks if the new name already exist before proceeding with the update
             if new_name and new_name != task_to_update:
-                if any(t["name"] == new_name for t in data["to_do_list"]):
+                if is_duplicate_name(data, new_name, exclude_task=task):
                     print("New task name already exists.")
                     return
                 task["name"] = new_name
 
-            new_task = input("Enter new task description (press Enter to keep current): ")
-            new_status = input("Enter new task status (press Enter to keep current): ")
+            new_task = input("Enter new task description (press Enter to keep current): ").strip()
+            new_status = input("Enter new task status (in_progress, completed, on_hold, or press Enter): ").lower().strip()
 
             if new_task:
                 task["task"] = new_task
-            if new_status:
+            if new_status in ["in_progress", "completed", "on_hold"]:
                 task["status"] = new_status
+            elif new_status:
+                print("Invalid status. Use in_progress, completed, or on_hold.")
+                return
+
             save_tasks(data)
             print("Task updated successfully.")
             return
     print("Task not found.")
 
-## Function to delete a task or all tasks
+
 def delete_task():
     """Delete a specific task or all tasks."""
     data = load_tasks()
@@ -126,36 +124,34 @@ def delete_task():
         else:
             print("Task not found.")
 
-# Prompt user for input
+
 while True:
     try:
-        user_input = int(input("Welcome to the To-do List Manager\n"
-                           "Select an option below\n"
+        user_input = input("Welcome to the To-Do List Manager\n"
+                           "Select an option (1-5):\n"
                            "1. Add a task\n"
                            "2. View a task\n"
                            "3. Update a task\n"
                            "4. Delete a task\n"
-                           "5. Quit\n"))
-
+                           "5. Quit\n")
+        if not user_input:
+            print("Input was empty. Select an option (1-5).")
+            continue
+        user_input = int(user_input)
         if user_input == 1:
-            print("Add a task")
             add_task()
-
         elif user_input == 2:
-            print("View a task")
             view_task()
-
         elif user_input == 3:
-            print("Update a task")
             update_task()
-
         elif user_input == 4:
-            print("Delete a task")
             delete_task()
-
         elif user_input == 5:
-            print("Goodbye")
+            print("Goodbye!")
             break
-
-    except ValueError:
-        print("Invalid input. Please Select a valid option between 1 and 5.")
+        else:
+            print("Invalid input. Please select a number between 1 and 5.")
+    except (ValueError, EOFError):
+        print("Invalid input. Please enter a number between 1 and 5.")
+    except KeyboardInterrupt:
+        break
